@@ -9,9 +9,12 @@ import { getCustomToolHandler } from "./custom-tool-handlers";
 import { readHandlerModulePath } from "./custom-tool-shared";
 
 const require = createRequire(import.meta.url);
-const corePackageRoot = path.dirname(
-  require.resolve("@nakama/core/package.json")
-);
+// Compiled single-file builds (bun build --compile, desktop bundles) cannot
+// satisfy require.resolve for workspace packages — allow the host to point at
+// a packages/core checkout shipped as an app resource instead.
+const corePackageRoot = process.env.NAKAMA_CORE_DIR
+  ? path.resolve(process.env.NAKAMA_CORE_DIR)
+  : path.dirname(require.resolve("@nakama/core/package.json"));
 const serverSrcDir = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   ".."

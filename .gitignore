@@ -2,6 +2,8 @@ node_modules
 **/node_modules
 **/dist
 coverage
+apps/desktop/dist-server
+apps/desktop/release
 .DS_Store
 .env
 .env.*

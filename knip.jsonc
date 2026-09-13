@@ -27,7 +27,11 @@
       "entry": ["src/shims/*.ts", "sw/service-worker.ts"]
     },
     // Not in package.json#workspaces; Knip would skip it otherwise.
-    "docs/website": {}
+    "docs/website": {},
+    "apps/desktop": {
+      "entry": ["scripts/*.ts"],
+      "project": ["src/**", "scripts/**"]
+    }
   },
   // Type-only import Knip cannot resolve.
   "ignoreUnresolved": ["../../services/auth-service"],

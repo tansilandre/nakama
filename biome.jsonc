@@ -10,7 +10,9 @@
     "includes": [
       "!packages/plugins/*/actions",
       "!packages/plugins/*/ui/app.js",
-      "!packages/plugins/*/workers"
+      "!packages/plugins/*/workers",
+      "!apps/desktop/release",
+      "!apps/desktop/dist-server"
     ]
   },
   "css": {

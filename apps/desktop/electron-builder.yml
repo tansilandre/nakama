@@ -1,0 +1,27 @@
+appId: com.getnakama.desktop
+productName: Nakama
+directories:
+  output: release
+
+mac:
+  target:
+    - dmg
+    - zip
+  identity: null
+  category: public.app-category.productivity
+  hardenedRuntime: false
+  gatekeeperAssess: false
+
+win:
+  target:
+    - nsis
+  signExecutable: false
+
+extraResources:
+  - from: dist-server
+    to: server
+    filter:
+      - "nakama-server*"
+      - "packages/**"
+  - from: dist-server/bun
+    to: bun
