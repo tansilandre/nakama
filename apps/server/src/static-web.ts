@@ -36,6 +36,12 @@ const REVALIDATE_CACHE_CONTROL = "no-cache";
 const DEFAULT_CACHE_CONTROL = "public, max-age=86400";
 
 export function resolveWebDistDir(projectRoot: string): string | null {
+  // Compiled single-file builds (bun build --compile, desktop bundles) ship the
+  // dashboard outside the repo tree — the host points us at it explicitly.
+  const override = process.env.NAKAMA_WEB_DIST_DIR;
+  if (override && existsSync(override)) {
+    return override;
+  }
   const distDir = join(projectRoot, "apps/web/dist");
   return existsSync(distDir) ? distDir : null;
 }

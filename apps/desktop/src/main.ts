@@ -162,6 +162,8 @@ async function startServer(port: number): Promise<void> {
       BUN_INSTALL_BIN: bunBinPath(),
       BUN_INSTALL_GLOBAL_DIR: join(dataDir, ".bun"),
       DATABASE_URL: `file:${join(dataDir, "sqlite", "nakama.sqlite")}`,
+      NAKAMA_BUN_BIN: bunBinPath(),
+      NAKAMA_BUNDLED_SKILLS_DIR: join(resourcesRoot(), "skills"),
       NAKAMA_CONFIG_DIR: dataDir,
       NAKAMA_CORE_DIR: coreDir(),
       NAKAMA_PORT: String(port),
@@ -172,6 +174,7 @@ async function startServer(port: number): Promise<void> {
         "sql",
         "schema.sql"
       ),
+      NAKAMA_WEB_DIST_DIR: join(resourcesRoot(), "web"),
       NODE_ENV: "production",
       ...process.env,
     },

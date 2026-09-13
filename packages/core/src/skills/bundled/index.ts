@@ -20,7 +20,12 @@ export {
   SUPER_BOT_BUNDLED_SKILL_NAMES,
 };
 
-const bundledDir = path.join(path.dirname(fileURLToPath(import.meta.url)));
+// Compiled single-file builds (bun build --compile, desktop bundles) cannot
+// read skills from the virtual filesystem — the host ships them as files and
+// points us at the directory via NAKAMA_BUNDLED_SKILLS_DIR.
+const bundledDir =
+  process.env.NAKAMA_BUNDLED_SKILLS_DIR ??
+  path.join(path.dirname(fileURLToPath(import.meta.url)));
 
 export async function readBundledSkillMarkdown(
   name: BundledSkillName

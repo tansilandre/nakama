@@ -9,7 +9,7 @@
  *   bun run scripts/compile-server.ts --target windows
  */
 
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +20,8 @@ const SERVER_DIR = join(MONOREPO_ROOT, "apps/server");
 const DIST_SERVER = join(DESKTOP_DIR, "dist-server");
 const PACKAGES_CORE = join(MONOREPO_ROOT, "packages/core");
 const DIST_PACKAGES_CORE = join(DIST_SERVER, "packages/core");
+const BUNDLED_SKILLS = join(MONOREPO_ROOT, "packages/core/src/skills/bundled");
+const WEB_DIST = join(MONOREPO_ROOT, "apps/web/dist");
 const PACKAGES_DB = join(MONOREPO_ROOT, "packages/db");
 const DIST_PACKAGES_DB = join(DIST_SERVER, "packages/db");
 const BUN_VERSION = (process.env.BUN_VERSION ?? "latest").replace(/^v/, "");
@@ -29,9 +31,23 @@ const TARGET_VAL =
 const BUN_TARGET =
   TARGET_VAL === "windows" ? "bun-windows-x64" : "bun-darwin-arm64";
 
-// Clean previous build
+// Clean previous build artifacts but KEEP dist-server/bun — the downloaded
+// runtime (fetch-runtime) is expensive to re-download and is not rebuilt here.
+for (const stale of [
+  "nakama-server",
+  "nakama-server.exe",
+  "packages",
+  "web",
+  "skills",
+]) {
+  rmSync(join(DIST_SERVER, stale), { force: true, recursive: true });
+}
 if (existsSync(DIST_SERVER)) {
-  rmSync(DIST_SERVER, { recursive: true });
+  for (const stale of readdirSync(DIST_SERVER).filter((f) =>
+    f.startsWith("_bun-")
+  )) {
+    rmSync(join(DIST_SERVER, stale), { force: true });
+  }
 }
 mkdirSync(DIST_SERVER, { recursive: true });
 
@@ -81,6 +97,43 @@ function copyFilter(src: string): boolean {
 }
 
 cpSync(PACKAGES_CORE, DIST_PACKAGES_CORE, {
+  filter: copyFilter,
+  force: true,
+  recursive: true,
+});
+
+// Bundled skill markdown ships for NAKAMA_BUNDLED_SKILLS_DIR — the compiled
+// binary cannot read them from its virtual filesystem.
+console.log("[compile-server] Copying bundled skills…");
+const DIST_SKILLS = join(DIST_SERVER, "skills");
+mkdirSync(DIST_SKILLS, { recursive: true });
+function skillsFilter(src: string): boolean {
+  if (src.includes("node_modules")) {
+    return false;
+  }
+  if (src.endsWith(".test.ts") || src.endsWith(".test.js")) {
+    return false;
+  }
+  return true;
+}
+cpSync(BUNDLED_SKILLS, DIST_SKILLS, {
+  filter: skillsFilter,
+  force: true,
+  recursive: true,
+});
+
+// Dashboard assets ship for NAKAMA_WEB_DIST_DIR — compiled builds have no
+// repo tree, so the server cannot discover apps/web/dist on its own.
+if (!existsSync(WEB_DIST)) {
+  console.error(
+    "[compile-server] apps/web/dist missing — run `bun run --filter @nakama/web build` first."
+  );
+  process.exit(1);
+}
+console.log("[compile-server] Copying apps/web/dist…");
+const DIST_WEB = join(DIST_SERVER, "web");
+mkdirSync(DIST_WEB, { recursive: true });
+cpSync(WEB_DIST, DIST_WEB, {
   filter: copyFilter,
   force: true,
   recursive: true,
