@@ -29,7 +29,8 @@ const HAS_TARGET_FLAG = process.argv.indexOf("--target");
 const TARGET_VAL =
   HAS_TARGET_FLAG === -1 ? undefined : process.argv[HAS_TARGET_FLAG + 1];
 const BUN_TARGET =
-  TARGET_VAL === "windows" ? "bun-windows-x64" : "bun-darwin-arm64";
+  process.env.BUN_TARGET ??
+  (TARGET_VAL === "windows" ? "bun-windows-x64" : "bun-darwin-arm64");
 
 // Clean previous build artifacts but KEEP dist-server/bun — the downloaded
 // runtime (fetch-runtime) is expensive to re-download and is not rebuilt here.

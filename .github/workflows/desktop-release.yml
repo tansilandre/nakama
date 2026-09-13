@@ -1,0 +1,62 @@
+# desktop-release.yml — triggers desktop app builds on v* tags and manually.
+#
+# Runs the reusable build-desktop.yml workflow for macOS (arm64) and Windows
+# (x64) in parallel.  On a tag push, artifacts are published to the matching
+# GitHub Release.  On workflow_dispatch, they are built unsigned and uploaded
+# as workflow artifacts for testing.
+
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run mode — build without publishing"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      sign:
+        description: "Attempt code signing (requires secrets)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  build-macos-arm64:
+    uses: ./.github/workflows/build-desktop.yml
+    permissions:
+      contents: write
+      packages: read
+    with:
+      os: macos-15
+      target: mac
+      arch: arm64
+      bun_target: bun-darwin-arm64
+      bun_platform: darwin-aarch64
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == 'true') || false }}
+      sign: ${{ github.event_name == 'workflow_dispatch' && (inputs.sign == 'true') || false }}
+    secrets: inherit
+
+  build-windows-x64:
+    uses: ./.github/workflows/build-desktop.yml
+    permissions:
+      contents: write
+      packages: read
+    with:
+      os: windows-latest
+      target: win
+      arch: x64
+      bun_target: bun-windows-x64
+      bun_platform: windows-x64
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run == 'true') || false }}
+      sign: false
+    secrets: inherit

@@ -1,0 +1,139 @@
+# build-desktop.yml — reusable workflow for desktop app builds.
+#
+# Callers (e.g. desktop-release.yml) set the OS matrix and signing/updater
+# mode.  This workflow installs Bun, builds the dashboard, compiles the server
+# binary into apps/desktop/dist-server/, downloads the matching Bun runtime,
+# and runs electron-builder to produce an unsigned (or signed) installer.
+#
+# Secrets (set in caller):
+#   GH_TOKEN          — GitHub PAT with repo scope (electron-builder publish)
+#   APPLE_CERTIFICATE_BASE64   — code signing (mac only, optional)
+#   APPLE_SIGNING_IDENTITY     — code signing (mac only, optional)
+#   APPLE_APP_SPECIFIC_PASSWORD — notarization (mac only, optional)
+
+name: Build Desktop
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: "runs-on value"
+        required: true
+        type: string
+      target:
+        description: "electron-builder target (mac, win)"
+        required: true
+        type: string
+      arch:
+        description: "electron-builder arch (arm64, x64)"
+        required: true
+        type: string
+      bun_target:
+        description: "bun build --compile target (bun-darwin-arm64, bun-windows-x64)"
+        required: true
+        type: string
+      bun_platform:
+        description: "Bun runtime download tag (darwin-aarch64, windows-x64)"
+        required: true
+        type: string
+      dry_run:
+        description: "Skip publishing (true) / publish to GitHub Releases (false)"
+        required: false
+        default: true
+        type: boolean
+      sign:
+        description: "Attempt code signing (requires secrets in caller)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write   # needed for electron-builder publish + release
+  packages: read
+
+env:
+  BUN_VERSION: 1.3.10
+
+jobs:
+  build:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: ${{ inputs.os == 'macos-15' && '120' || '60' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Set up Bun ${{ env.BUN_VERSION }}
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Restore node_modules cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            node_modules
+            apps/desktop/node_modules
+          key: desktop-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            desktop-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        shell: bash
+
+      - name: Build dashboard (apps/web/dist)
+        run: bun run --filter @nakama/web build
+        shell: bash
+        env:
+          NODE_ENV: production
+
+      - name: Compile server binary
+        working-directory: apps/desktop
+        run: bun run compile-server
+        shell: bash
+        env:
+          BUN_TARGET: ${{ inputs.bun_target }}
+
+      - name: Download Bun runtime for tool runners
+        working-directory: apps/desktop
+        run: bun run fetch-runtime
+        shell: bash
+        env:
+          BUN_VERSION: ${{ env.BUN_VERSION }}
+
+      # ── Code signing (mac only, opt-in) ─────────────────────────────
+      - name: Import macOS certificate (signing)
+        if: inputs.sign && runner.os == 'macOS'
+        shell: bash
+        run: |
+          echo "${{ secrets.APPLE_CERTIFICATE_BASE64 }}" > /tmp/cert.base64
+          openssl base64 -d -in /tmp/cert.base64 -out /tmp/cert.p12
+          security create-keychain -p nakama-desk nakama-desk.keychain
+          security default-keychain -s nakama-desk.keychain
+          security unlock-keychain -p nakama-desk nakama-desk.keychain
+          security import /tmp/cert.p12 -k nakama-desk.keychain -P "${{ secrets.APPLE_SIGNING_PASSWORD }}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k nakama-desk nakama-desk.keychain
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=true" >> "$GITHUB_ENV"
+        continue-on-error: true  # signing is a nice-to-have in v1
+
+      - name: Build installer
+        working-directory: apps/desktop
+        run: |
+          CSC_IDENTITY_AUTO_DISCOVERY="${CSC_IDENTITY_AUTO_DISCOVERY:-false}" \
+          npx electron-builder \
+            --${{ inputs.target }} \
+            --${{ inputs.arch }} \
+            ${{ inputs.dry_run && '--publish=never' || '--publish=always' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nakama-desktop-${{ inputs.target }}-${{ inputs.arch }}-${{ github.sha }}
+          path: apps/desktop/release/
+          retention-days: 7
