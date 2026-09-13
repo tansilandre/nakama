@@ -165,6 +165,13 @@ async function startServer(port: number): Promise<void> {
       NAKAMA_CONFIG_DIR: dataDir,
       NAKAMA_CORE_DIR: coreDir(),
       NAKAMA_PORT: String(port),
+      NAKAMA_SCHEMA_PATH: join(
+        resourcesRoot(),
+        "packages",
+        "db",
+        "sql",
+        "schema.sql"
+      ),
       NODE_ENV: "production",
       ...process.env,
     },

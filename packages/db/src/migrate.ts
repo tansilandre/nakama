@@ -93,6 +93,11 @@ export function resolveSchemaPath(
     options.moduleDir ?? dirname(fileURLToPath(import.meta.url));
   const cwd = options.cwd ?? process.cwd();
   const candidates = [
+    // Compiled single-file builds (bun build --compile, desktop bundles) ship
+    // packages/db as an app resource — the host points us at the real file.
+    ...(process.env.NAKAMA_SCHEMA_PATH
+      ? [resolve(process.env.NAKAMA_SCHEMA_PATH)]
+      : []),
     join(moduleDir, "../sql/schema.sql"),
     resolve(cwd, "packages/db/sql/schema.sql"),
     resolve(cwd, "../packages/db/sql/schema.sql"),

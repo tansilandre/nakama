@@ -30,7 +30,7 @@ const HAS_TARGET_FLAG = process.argv.indexOf("--target");
 const TARGET_VAL =
   HAS_TARGET_FLAG === -1 ? undefined : process.argv[HAS_TARGET_FLAG + 1];
 const IS_WINDOWS = TARGET_VAL === "windows";
-const PLATFORM_TAG = IS_WINDOWS ? "windows-x64" : "darwin-arm64";
+const PLATFORM_TAG = IS_WINDOWS ? "windows-x64" : "darwin-aarch64";
 const ARCHIVE_NAME = `bun-${PLATFORM_TAG}.zip`;
 
 const { stdout: versionOut } = Bun.spawnSync(["bun", "--version"], {

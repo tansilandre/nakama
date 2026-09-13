@@ -20,6 +20,8 @@ const SERVER_DIR = join(MONOREPO_ROOT, "apps/server");
 const DIST_SERVER = join(DESKTOP_DIR, "dist-server");
 const PACKAGES_CORE = join(MONOREPO_ROOT, "packages/core");
 const DIST_PACKAGES_CORE = join(DIST_SERVER, "packages/core");
+const PACKAGES_DB = join(MONOREPO_ROOT, "packages/db");
+const DIST_PACKAGES_DB = join(DIST_SERVER, "packages/db");
 const BUN_VERSION = (process.env.BUN_VERSION ?? "latest").replace(/^v/, "");
 const HAS_TARGET_FLAG = process.argv.indexOf("--target");
 const TARGET_VAL =
@@ -79,6 +81,17 @@ function copyFilter(src: string): boolean {
 }
 
 cpSync(PACKAGES_CORE, DIST_PACKAGES_CORE, {
+  filter: copyFilter,
+  force: true,
+  recursive: true,
+});
+
+// packages/db ships for NAKAMA_SCHEMA_PATH — the bootstrap schema.sql is read
+// from disk at runtime and compiled builds cannot read it from the bundle.
+console.log("[compile-server] Copying packages/db…");
+const DIST_PACKAGES_DB_DIR = join(DIST_PACKAGES_DB, "sql");
+mkdirSync(DIST_PACKAGES_DB_DIR, { recursive: true });
+cpSync(PACKAGES_DB, DIST_PACKAGES_DB, {
   filter: copyFilter,
   force: true,
   recursive: true,

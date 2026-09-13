@@ -8,7 +8,8 @@
     "build": "tsc",
     "compile-server": "bun run scripts/compile-server.ts",
     "dev": "electron .",
-    "dist": "electron-builder"
+    "dist": "bun run scripts/fetch-runtime.ts && electron-builder",
+    "fetch-runtime": "bun run scripts/fetch-runtime.ts"
   },
   "devDependencies": {
     "electron": "^35.0.0",
